@@ -178,17 +178,16 @@ async function load(after = false) {
     const e = data.event;
     const done = e.status !== "pending";
     let main = "";
-    if (!after && !done) {
-      if (ACTION === "approve") main = `<button class="ok big" id="go">✓ Potwierdź: zatwierdź i pokaż w apce</button>`;
-      if (ACTION === "reject") main = `<button class="no big" id="go">✕ Potwierdź: odrzuć</button>`;
-    }
+    if (!after && !done && ACTION === "approve") main = `<button class="ok big" id="go">✓ Potwierdź: zatwierdź i pokaż w apce</button>`;
+    if (!after && e.status !== "rejected" && ACTION === "reject")
+      main = `<button class="no big" id="go">✕ Potwierdź: ${e.status === "approved" ? "wycofaj z apki" : "odrzuć"}</button>`;
     $("#app").innerHTML = eventCard(e) + (main ? `<div class="card">${main}</div>` : "") +
       (ACTION === "edit" && !after ? editForm(e) : done ? `<div class="btns"><button class="edit" id="ed">✎ Popraw dane</button></div>` : `<div class="btns">
         ${ACTION !== "approve" ? `<button class="ok" id="ap">✓ Zatwierdź</button>` : ""}
         ${ACTION !== "reject" ? `<button class="no" id="rj">✕ Odrzuć</button>` : ""}
         <button class="edit" id="ed">✎ Uzupełnij</button></div>`);
     const go = $("#go");
-    if (go) go.onclick = () => act(ACTION, ACTION === "approve" ? "Zatwierdzone. Wpis pojawi się w apce po odświeżeniu." : "Odrzucone.");
+    if (go) go.onclick = () => act(ACTION, ACTION === "approve" ? "Zatwierdzone. Wpis pojawi się w apce po odświeżeniu." : "Odrzucone. Wpis zniknie z apki po odświeżeniu.");
     if ($("#ap")) $("#ap").onclick = () => act("approve", "Zatwierdzone. Wpis pojawi się w apce po odświeżeniu.");
     if ($("#rj")) $("#rj").onclick = () => act("reject", "Odrzucone.");
     if ($("#ed")) $("#ed").onclick = () => { $("#ed").remove(); $("#app").insertAdjacentHTML("beforeend", editForm(e)); wireForm(); };
