@@ -53,7 +53,26 @@ const q = new URLSearchParams(location.search);
 const TOKEN = q.get("t") || "";
 const ACTION = q.get("a") || "";
 const GAP = { start_time: "godzina", price: "cena", venue: "miejsce", date: "data" };
-const FIELD = { price_text: "Cena", start_time: "Godzina", venue: "Miejsce" };
+const FIELD = { price_text: "Cena", start_time: "Godzina", end_time: "Godzina końca", venue: "Miejsce", hours_text: "Godziny otwarcia",
+  days_of_week: "Dni", official_url: "Oficjalna strona", phone: "Telefon" };
+const KIND = { places: "Miejsce", deals: "Promocja" };
+
+function simpleCard(r, table) {
+  const link = r.official_url || r.url;
+  const name = r.name || r.title;
+  const days = Array.isArray(r.days_of_week) ? r.days_of_week.map((i) => ["Nd", "Pn", "Wt", "Śr", "Cz", "Pt", "Sb"][i]).join(", ") : "";
+  const time = r.start_time ? r.start_time.slice(0, 5) + (r.end_time ? "–" + r.end_time.slice(0, 5) : "") : "";
+  return `<div class="card">
+    <div class="small">${esc(KIND[table] || "")}</div>
+    <div class="title">${link ? `<a href="${esc(link)}" target="_blank" rel="noopener noreferrer">${esc(name)} ↗</a>` : esc(name)}</div>
+    <div class="row">${esc([r.venue, r.area, r.city].filter(Boolean).join(", "))}</div>
+    ${r.hours_text ? `<div class="row">Godziny: <b>${esc(r.hours_text)}</b></div>` : ""}
+    ${days || time ? `<div class="row">${esc(days)}${days && time ? " · " : ""}${esc(time)}</div>` : ""}
+    ${r.price_text ? `<div class="row">Cena: <b>${esc(r.price_text)}</b></div>` : ""}
+    ${r.details ? `<div class="small" style="margin-top:6px">${esc(r.details)}</div>` : ""}
+    <div class="small" style="margin-top:8px">status: <b>${esc(r.status)}</b></div>
+  </div>`;
+}
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
@@ -179,11 +198,12 @@ async function load(after = false) {
 
   if (data.kind === "change") {
     const c = data.change, e = data.event;
-    $("#app").innerHTML = (e ? eventCard(e) : "") + `<div class="card">
-      <div class="title" style="font-size:17px">Bot znalazł zmianę</div>
-      <div class="row"><b>${esc(FIELD[c.field] || c.field)}:</b> ${esc(c.old_value || "–")} → <b>${esc(c.new_value || "–")}</b></div>
-      ${c.evidence ? `<div class="quote">Cytat: <span>„${esc(c.evidence)}”</span></div>` : ""}
-      ${c.source_url ? `<div class="small"><a href="${esc(c.source_url)}" target="_blank" rel="noopener noreferrer">Otwórz stronę źródłową ↗</a></div>` : ""}
+    const isUrl = c.field === "official_url";
+    $("#app").innerHTML = (e ? (data.table && data.table !== "events" ? simpleCard(e, data.table) : eventCard(e)) : "") + `<div class="card">
+      <div class="title" style="font-size:17px">${isUrl ? (c.new_value ? "Propozycja strony oficjalnej" : "Strona oficjalna przestała działać") : "Bot znalazł zmianę"}</div>
+      <div class="row"><b>${esc(FIELD[c.field] || c.field)}:</b> ${esc(c.old_value || "–")} → <b>${esc(c.new_value || "(usuń link)")}</b></div>
+      ${c.evidence ? `<div class="quote">${isUrl ? "Uzasadnienie" : "Cytat"}: <span>„${esc(c.evidence)}”</span></div>` : ""}
+      ${c.source_url ? `<div class="small"><a href="${esc(c.source_url)}" target="_blank" rel="noopener noreferrer">${isUrl ? "Otwórz i sprawdź, czy to strona oficjalna ↗" : "Otwórz stronę źródłową ↗"}</a></div>` : ""}
       ${c.handled ? `<div class="msg ok" style="margin-top:12px">Już załatwione.</div>` : `<div class="btns" style="margin-top:12px">
         <button class="ok ${ACTION === "accept" ? "big" : ""}" id="acc">✓ ${ACTION === "accept" ? "Potwierdź: przyjmij zmianę" : "Przyjmij zmianę"}</button>
         <button class="ghost ${ACTION === "ignore" ? "big" : ""}" id="ign">${ACTION === "ignore" ? "Potwierdź: zostaw jak jest" : "Zostaw jak jest"}</button></div>`}
